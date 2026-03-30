@@ -1,2 +1,7 @@
 dns.conf
+list.txt
 
+logs/
+*.log
+
+.docker/

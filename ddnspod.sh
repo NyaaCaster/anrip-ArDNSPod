@@ -13,11 +13,15 @@ case $(uname) in
     echo "Linux"
     arIpAddress() {
         local extip
-        extip=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 | grep -Ev '(^127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^172\.1[6-9]{1}[0-9]{0,1}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^172\.2[0-9]{1}[0-9]{0,1}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^172\.3[0-1]{1}[0-9]{0,1}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$)')
-        if [ "x${extip}" = "x" ]; then
-	        extip=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 )
+        if [ -n "$DDNS_INTERFACE" ]; then
+            extip=$(ip -o -4 addr list $DDNS_INTERFACE | awk '{print $4}' | cut -d/ -f1)
+        else
+            extip=$(ip -o -4 addr list | grep -Ev '\s(docker|lo|tun|utun|ppp)' | awk '{print $4}' | cut -d/ -f1 | grep -Ev '(^127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^172\.1[6-9]{1}[0-9]{0,1}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^172\.2[0-9]{1}[0-9]{0,1}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^172\.3[0-1]{1}[0-9]{0,1}\.[0-9]{1,3}\.[0-9]{1,3}$)|(^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$)')
         fi
-        echo $extip
+        if [ "x${extip}" = "x" ]; then
+            extip=$(wget -qO- --no-check-certificate --timeout=5 http://ip.3322.net 2>/dev/null || wget -qO- --no-check-certificate --timeout=5 https://api.ipify.org 2>/dev/null || wget -qO- --no-check-certificate --timeout=5 https://icanhazip.com 2>/dev/null)
+        fi
+        echo $extip | awk '{print $1}'
     }
     ;;
   'FreeBSD')
@@ -102,10 +106,6 @@ arToken=""
 # Account-based Authentication
 arMail=""
 arPass=""
-
-# Load config
-
-#. $DIR/dns.conf
 
 # Get Domain IP
 # arg: domain
@@ -197,6 +197,7 @@ arDdnsCheck() {
             postRS=$(arDdnsUpdate $1 $2)
             if [ $? -eq 0 ]; then
                 echo "postRS: ${postRS}"
+                sleep 2
                 return 0
             else
                 echo ${postRS}
@@ -217,4 +218,8 @@ arDdnsCheck() {
 #    arDdnsCheck "${domains[index]}" "${subdomains[index]}"
 #done
 
-. $DIR/dns.conf
+if [ -f /tmp/dns.conf ]; then
+    . /tmp/dns.conf
+else
+    . $DIR/dns.conf
+fi

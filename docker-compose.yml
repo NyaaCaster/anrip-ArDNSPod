@@ -1,0 +1,17 @@
+services:
+  dnspod-ddns:
+    build: .
+    image: dnspod-ddns:latest
+    container_name: dnspod-ddns
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - DDNS_INTERFACE=${DDNS_INTERFACE:-}
+    volumes:
+      - ./dns.conf:/app/dns.conf:ro
+      - ./logs:/var/log
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
